@@ -1,0 +1,92 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": null,
+   "id": "ea9b3118-0b2d-428a-85e3-e68716651828",
+   "metadata": {},
+   "outputs": [],
+   "source": [
+    "import requests\n",
+    "from bs4 import BeautifulSoup\n",
+    "import csv\n",
+    "import os\n",
+    "from datetime import datetime\n",
+    "\n",
+    "\n",
+    "def scrape_books():\n",
+    "    url = \"http://books.toscrape.com/\"\n",
+    "\n",
+    "    try:\n",
+    "        # Adding a 'User-Agent' header makes the request look like a real browser\n",
+    "        headers = {'User-Agent': 'Mozilla/5.0'}\n",
+    "        response = requests.get(url, headers=headers, timeout=10)\n",
+    "        response.raise_for_status()\n",
+    "    except requests.exceptions.RequestException as e:\n",
+    "        print(f\"❌ Connection Error: {e}\")\n",
+    "        return\n",
+    "\n",
+    "    soup = BeautifulSoup(response.text, 'html.parser')\n",
+    "    # Find all book containers\n",
+    "    books = soup.find_all('article', class_='product_pod')\n",
+    "\n",
+    "    scraped_data = []\n",
+    "\n",
+    "    for book in books:\n",
+    "        try:\n",
+    "            # Added safety checks to avoid 'NoneType' errors if a tag is missing\n",
+    "            title = book.h3.a['title'] if book.h3 and book.h3.a else \"N/A\"\n",
+    "            price_tag = book.find('p', class_='price_color')\n",
+    "            price = price_tag.text if price_tag else \"N/A\"\n",
+    "\n",
+    "            stock_tag = book.find('p', class_='instock availability')\n",
+    "            availability = stock_tag.text.strip() if stock_tag else \"N/A\"\n",
+    "\n",
+    "            scraped_data.append([title, price, availability])\n",
+    "        except Exception as e:\n",
+    "            print(f\"⚠️ Skipping a book due to error: {e}\")\n",
+    "\n",
+    "    filename = \"book_data.csv\"\n",
+    "\n",
+    "    try:\n",
+    "        file_exists = os.path.isfile(filename)\n",
+    "        with open(filename, mode='a', newline='', encoding='utf-8') as file:\n",
+    "            writer = csv.writer(file)\n",
+    "            if not file_exists:\n",
+    "                writer.writerow(['Title', 'Price', 'Availability', 'Scraped_At'])\n",
+    "\n",
+    "            timestamp = datetime.now().strftime(\"%Y-%m-%d %H:%M:%S\")\n",
+    "            for item in scraped_data:\n",
+    "                writer.writerow(item + [timestamp])\n",
+    "        print(f\"✅ Successfully saved {len(scraped_data)} items to {filename}\")\n",
+    "    except PermissionError:\n",
+    "        print(f\"❌ Error: Could not save file. Please close '{filename}' if it is open in Excel!\")\n",
+    "\n",
+    "\n",
+    "if __name__ == \"__main__\":\n",
+    "    scrape_books()"
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3 (ipykernel)",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.4"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
